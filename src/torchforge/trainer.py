@@ -1,5 +1,6 @@
 import copy
 import logging
+import time
 from typing import Callable, NamedTuple
 
 import matplotlib.pyplot as plt
@@ -33,6 +34,7 @@ class Trainer:
         Attributes:
             train_losses: Average training loss per epoch, populated after calling train().
             eval_losses: Average validation loss per epoch, populated after calling train() with eval_dataloader.
+            epoch_times: Wall-clock duration in seconds for each training epoch, populated after calling train().
         """
         self.model = model
         self.optimizer = optimizer
@@ -45,8 +47,9 @@ class Trainer:
             self.device = "cpu"
         logger.info(f"Device found: {self.device}")
         self.model.to(self.device)
-        self.train_losses = []
-        self.eval_losses = []
+        self.train_losses: list[float] = []
+        self.eval_losses: list[float] = []
+        self.epoch_times: list[float] = []
 
     def train(
         self,
@@ -75,6 +78,7 @@ class Trainer:
         self.model.train()
         self.train_losses = []
         self.eval_losses = []
+        self.epoch_times = []
         use_early_stopping = eval_dataloader is not None
         n_train_batches = len(train_dataloader)
         best_loss = torch.inf
@@ -82,6 +86,7 @@ class Trainer:
         patience_count = 0
 
         for epoch in range(n_epochs):
+            epoch_start = time.perf_counter()
             epoch_loss = 0.0
             for X, y in train_dataloader:
                 X, y = X.to(self.device), y.to(self.device)
@@ -92,6 +97,7 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
+            self.epoch_times.append(time.perf_counter() - epoch_start)
             avg_train_loss = epoch_loss / n_train_batches
             logger.info(f"avg loss at epoch {epoch} is: {avg_train_loss:7f}")
             self.train_losses.append(avg_train_loss)

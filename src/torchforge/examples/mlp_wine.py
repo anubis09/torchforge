@@ -46,6 +46,11 @@ if __name__ == "__main__":
         patience=15,
     )
 
+    epoch_times = trainer.epoch_times
+    print(f"epochs run: {len(epoch_times)}")
+    print(f"mean epoch time: {sum(epoch_times) / len(epoch_times) * 1000:.2f}ms")
+    print(f"total training time: {sum(epoch_times):.2f}s")
+
     trainer.plot_losses()
 
     multiclass_accuracy = MulticlassAccuracy(num_classes=dataset.n_outputs)
