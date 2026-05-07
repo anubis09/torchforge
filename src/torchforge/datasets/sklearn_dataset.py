@@ -1,54 +1,10 @@
-from typing import Callable, NamedTuple, final, override
+from typing import Callable, NamedTuple
 
 import numpy as np
 import torch
-from jaxtyping import Float
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from torch.utils.data import Dataset
-
-
-@final
-class SKlearnDataset(Dataset):
-    """A PyTorch Dataset wrapping a pair of numpy arrays from an sklearn-style dataset.
-
-    Attributes:
-        X: Input features as a float32 tensor of shape (n, m).
-        y: Targets as a tensor of shape (n,) with the specified dtype.
-    """
-
-    def __init__(
-        self,
-        X: Float[np.ndarray, "n m"],
-        y: np.ndarray,
-        y_dtype: torch.dtype = torch.long,
-    ) -> None:
-        """Initializes the dataset by converting numpy arrays to tensors.
-
-        Args:
-            X: Input feature matrix of shape (n, m).
-            y: Target array of shape (n,).
-            y_dtype: dtype for the target tensor. Use torch.long for classification
-                and torch.float32 for regression. Defaults to torch.long.
-        """
-        self.X: torch.Tensor = torch.tensor(X, dtype=torch.float32)
-        self.y: torch.Tensor = torch.tensor(y, dtype=y_dtype)
-
-    def __len__(self) -> int:
-        """Returns the number of samples in the dataset."""
-        return len(self.X)
-
-    @override
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Returns the feature vector and target at the given index.
-
-        Args:
-            idx: Sample index.
-
-        Returns:
-            A tuple (X[idx], y[idx]).
-        """
-        return self.X[idx], self.y[idx]
+from torch.utils.data import TensorDataset
 
 
 class DatasetSplit(NamedTuple):
@@ -64,9 +20,9 @@ class DatasetSplit(NamedTuple):
 
     n_features: int
     n_outputs: int
-    train_dataset: SKlearnDataset
-    val_dataset: SKlearnDataset
-    test_dataset: SKlearnDataset
+    train_dataset: TensorDataset
+    val_dataset: TensorDataset
+    test_dataset: TensorDataset
 
 
 def load_sklearn_dataset(
@@ -119,7 +75,13 @@ def load_sklearn_dataset(
     return DatasetSplit(
         n_features=n_features,
         n_outputs=n_outputs,
-        train_dataset=SKlearnDataset(np.asarray(X_train), np.asarray(y_train), y_dtype),
-        val_dataset=SKlearnDataset(np.asarray(X_val), np.asarray(y_val), y_dtype),
-        test_dataset=SKlearnDataset(np.asarray(X_test), np.asarray(y_test), y_dtype),
+        train_dataset=TensorDataset(
+            torch.from_numpy(X_train).float(), torch.from_numpy(y_train).to(y_dtype)
+        ),
+        val_dataset=TensorDataset(
+            torch.from_numpy(X_val).float(), torch.from_numpy(y_val).to(y_dtype)
+        ),
+        test_dataset=TensorDataset(
+            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).to(y_dtype)
+        ),
     )
